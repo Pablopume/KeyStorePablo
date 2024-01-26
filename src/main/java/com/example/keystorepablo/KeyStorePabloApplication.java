@@ -1,5 +1,6 @@
 package com.example.keystorepablo;
 
+import javafx.application.Application;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -7,7 +8,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class KeyStorePabloApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(KeyStorePabloApplication.class, args);
+        Application.launch(DIJavafx.class, args);
+//        SpringApplication.run(KeyStorePabloApplication.class, args);
     }
 
 }
