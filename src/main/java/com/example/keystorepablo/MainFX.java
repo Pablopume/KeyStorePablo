@@ -10,6 +10,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+
 @Component
 public class MainFX implements ApplicationListener<DIJavafx.StageReadyEvent> {
 
@@ -24,17 +25,11 @@ public class MainFX implements ApplicationListener<DIJavafx.StageReadyEvent> {
     @Override
     public void onApplicationEvent(DIJavafx.StageReadyEvent event) {
         try {
-//            ResourceBundle r = ResourceBundle.getBundle("/i18n/textos");
             Stage stage = event.getStage();
-            //fxmlLoader.setResources(r);
             Parent fxmlParent = fxmlLoader.load(getClass().getResourceAsStream("/fxml/principal.fxml"));
             PrincipalController controller = fxmlLoader.getController();
-
-
+            controller.setStage(stage);
             stage.setScene(new Scene(fxmlParent));
-            //stage.setMinHeight(1000);
-//            stage.getScene().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
-//            stage.setTitle(r.getString("app.title"));
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();

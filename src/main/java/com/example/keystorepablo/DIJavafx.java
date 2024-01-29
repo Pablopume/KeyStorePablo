@@ -1,13 +1,11 @@
 package com.example.keystorepablo;
 
-
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ConfigurableApplicationContext;
-
 
 public class DIJavafx extends Application {
 
