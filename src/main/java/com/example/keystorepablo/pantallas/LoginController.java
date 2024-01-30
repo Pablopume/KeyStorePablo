@@ -24,7 +24,7 @@ public class LoginController extends BaseScreenController {
 
     }
 
-    public void doLogin(ActionEvent actionEvent) {
+    public void doLogin() {
         if (servicioCredentials.doLogin(txtUserName.getText(), txtPassword.getText())) {
             Credentials credentials=new Credentials(0,txtUserName.getText(),txtPassword.getText());
             getPrincipalController().onLoginDone(credentials);

@@ -18,5 +18,6 @@ public class Utils {
         return Base64.getUrlEncoder().encodeToString(bits);
     }
 
-
+    private Utils() {
+    }
 }

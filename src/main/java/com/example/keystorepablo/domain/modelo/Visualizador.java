@@ -20,6 +20,6 @@ public class Visualizador {
     @Column(name = "password",nullable= false,columnDefinition = "TEXT")
     private String password;
     @ManyToOne
-    @JoinColumn(name = "recurso_id")
+    @JoinColumn(name = "recurso_id", referencedColumnName = "id")
     private Recurso recurso;
 }

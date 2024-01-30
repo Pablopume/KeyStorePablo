@@ -5,7 +5,11 @@ import com.example.keystorepablo.data.VisualizadorRepository;
 import com.example.keystorepablo.domain.modelo.Recurso;
 import com.example.keystorepablo.domain.modelo.Visualizador;
 import com.example.keystorepablo.seguridad.Encriptacion;
+import com.example.keystorepablo.seguridad.EncriptacionAsim;
 import com.example.keystorepablo.seguridad.Utils;
+import com.example.keystorepablo.seguridad.impl.ErrorApp;
+import io.vavr.control.Either;
+import lombok.extern.log4j.Log4j2;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
@@ -17,33 +21,31 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.X509Certificate;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
-
+import java.util.List;
+@Log4j2
 @Service
 public class ServicioRecurso {
-
+    private final EncriptacionAsim encriptacionAsim;
     private final PasswordEncoder passwordEncoder;
     private final RecursoRepsitory recursosRepository;
     private final VisualizadorRepository visualizadorRepository;
     private final Encriptacion encriptacion;
 
     @Autowired
-    public ServicioRecurso(PasswordEncoder passwordEncoder, RecursoRepsitory recursosRepository, VisualizadorRepository visualizadorRepository, Encriptacion encriptacion) {
+    public ServicioRecurso(EncriptacionAsim encriptacionAsim, PasswordEncoder passwordEncoder, RecursoRepsitory recursosRepository, VisualizadorRepository visualizadorRepository, Encriptacion encriptacion) {
+        this.encriptacionAsim = encriptacionAsim;
         this.passwordEncoder = passwordEncoder;
         this.recursosRepository = recursosRepository;
         this.visualizadorRepository = visualizadorRepository;
         this.encriptacion = encriptacion;
     }
+
 
     public Recurso crearRecurso(String nombreUsuario, String nombreRecurso, String contraseñaRecurso) {
         Recurso recursos = new Recurso();
@@ -56,20 +58,20 @@ public class ServicioRecurso {
             generarCertificadoRecurso(nombreRecurso, usuarioKeyPair);
 
             // Firmar la contraseña del recurso con la clave privada del usuario
-            byte[] firmaContraseñaRecurso = firmarConClavePrivada(contraseñaRecurso.getBytes(), usuarioKeyPair.getPrivate());
+            String firmaContraseñaRecurso = firmarConClavePrivada(contraseñaRecurso.getBytes(), usuarioKeyPair.getPrivate());
 
             // Guardar el recurso en la base de datos
             Recurso nuevoRecurso = new Recurso();
             nuevoRecurso.setId(0);
             nuevoRecurso.setNombre(nombreRecurso);
             String random = Utils.randomBytes();
-            nuevoRecurso.setPassword(encriptacion.encriptar(contraseñaRecurso,random));
-            nuevoRecurso.setFirma(Base64.getEncoder().encodeToString(firmaContraseñaRecurso));
+            nuevoRecurso.setPassword(encriptacion.encriptar(contraseñaRecurso, random));
+            nuevoRecurso.setFirma(firmaContraseñaRecurso);
             nuevoRecurso.setUserfirma(nombreUsuario);
             recursosRepository.save(nuevoRecurso);
 
             Visualizador visualizador = new Visualizador();
-            String passwordvisualizador = encriptacion.encriptar(random, usuarioKeyPair.getPublic().toString());
+            String passwordvisualizador = encriptacionAsim.encriptar(random, usuarioKeyPair.getPublic()).get();
             visualizador.setNombre(nombreUsuario);
             visualizador.setPassword(passwordvisualizador);
             visualizador.setRecurso(nuevoRecurso);
@@ -86,15 +88,68 @@ public class ServicioRecurso {
         return recursos;
 
     }
-
-    private boolean verificarFirmaContraseñaRecurso(String contraseñaRecurso, byte[] firmaContraseñaRecurso, PublicKey publicKey) throws Exception {
-        // Verificar la firma de la contraseña del recurso con la clave pública del usuario
-        Signature firma = Signature.getInstance("SHA256withRSA");
-        firma.initVerify(publicKey);
+    private String firmarConClavePrivada(byte[] data, PrivateKey privateKey) throws Exception {
+        String algoritmoFirma = "SHA256withRSA";
+        Signature firma = Signature.getInstance(algoritmoFirma);
+        firma.initSign(privateKey);
         MessageDigest hash = MessageDigest.getInstance("SHA-256");
-        firma.update(hash.digest(contraseñaRecurso.getBytes()));
-        return firma.verify(firmaContraseñaRecurso);
+        firma.update(hash.digest(data));
+        return Base64.getEncoder().encodeToString(firma.sign());
     }
+    public boolean verificarFirmaRecurso(Recurso recurso, String nombreUsuario) {
+        try {
+            // Obtener la información del usuario
+            KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreUsuario);
+
+            // Obtener la firma almacenada en el recurso
+            String firmaAlmacenada = recurso.getFirma();
+
+            // Obtener la contraseña del recurso
+            String contraseñaRecurso = recurso.getPassword();
+           Visualizador visualizador= visualizadorRepository.findVisualizadorByRecursoAndNombre(recurso,nombreUsuario);
+         String random=   encriptacionAsim.desencriptar(visualizador.getPassword(),usuarioKeyPair.getPrivate()).get();
+
+
+            // Desencriptar la contraseña utilizando el usuarioKeyPair
+            String decryptedPassword = encriptacion.desencriptar(contraseñaRecurso, random);
+
+            // Firmar la contraseña del recurso con la clave privada del usuario
+            String firmaGenerada = firmarConClavePrivada(decryptedPassword.getBytes(), usuarioKeyPair.getPrivate());
+
+            // Comparar la firma almacenada con la firma generada
+            return firmaAlmacenada.equals(firmaGenerada);
+        } catch (Exception ex) {
+            log.error("Error al verificar la firma del recurso", ex);
+            // Manejar otras excepciones según sea necesario
+        }
+        return false;
+    }
+
+
+    public List<Recurso> getAllRecursos(String nombreUsuario){
+        return visualizadorRepository.findByNombre(nombreUsuario).stream().map(Visualizador::getRecurso).toList();
+    }
+
+    public Either<ErrorApp, Visualizador> compartirRecurso(String nombreDueño, String nombreVisualizador, Recurso recurso) {
+        Either<ErrorApp, Visualizador> result = Either.left(new ErrorApp("Error al compartir el recurso"));
+        KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreDueño);
+        KeyPair visualizadorKeyPair = obtenerKeyPairUsuario(nombreVisualizador);
+
+        Visualizador visualizador = visualizadorRepository.findByNombreAndRecurso(nombreDueño, recurso);
+        if (usuarioKeyPair != null && visualizadorKeyPair != null) {
+            String randomizador = encriptacionAsim.desencriptar(visualizador.getPassword(), usuarioKeyPair.getPrivate()).get();
+            String passwordEncripted = encriptacionAsim.encriptar(randomizador, visualizadorKeyPair.getPublic()).get();
+            Visualizador visualizador1 = new Visualizador();
+            visualizador1.setNombre(nombreVisualizador);
+            visualizador1.setPassword(passwordEncripted);
+            visualizador1.setRecurso(recurso);
+            visualizadorRepository.save(visualizador1);
+            result = Either.right(visualizador1);
+        }
+        return result;
+    }
+
+
 
     private KeyPair obtenerKeyPairUsuario(String nombreUsuario) {
         try {
@@ -123,41 +178,6 @@ public class ServicioRecurso {
         }
     }
 
-    public byte[] cifrarAsimetricamenteClaveSimetrica(String claveSimetrica, String clavePublica) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-
-        // Decodificar la clave pública
-        byte[] clavePublicaBytes = Base64.getDecoder().decode(clavePublica);
-        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(clavePublicaBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PublicKey publicKey = keyFactory.generatePublic(x509KeySpec);
-
-        // Cifrar la clave simétrica con la clave pública
-        // Aquí debes utilizar el algoritmo de cifrado asimétrico adecuado
-        // En este ejemplo, se utiliza RSA para cifrar, pero podría ser otro algoritmo según tus necesidades
-        Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        return cipher.doFinal(claveSimetrica.getBytes());
-    }
-
-    public static SecretKey generarClaveSimetricaAleatoria() throws NoSuchAlgorithmException {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES"); // Puedes ajustar el algoritmo según tus necesidades
-        keyGenerator.init(256); // Puedes ajustar el tamaño de la clave según tus necesidades (128, 192, o 256 bits para AES)
-        return keyGenerator.generateKey();
-    }
-
-    public boolean crearVisualizador(Recurso recurso, String nombreUusario) throws Exception {
-
-        byte[] claveSimetricaCifrada = cifrarAsimetricamenteClaveSimetrica(generarClaveSimetricaAleatoria().toString(), recurso.getUserfirma());
-
-        // Guardar la clave simétrica cifrada en la tercera tabla (Visualizador)
-        Visualizador visualizador = new Visualizador();
-        visualizador.setNombre(nombreUusario);  // Ajusta según tus necesidades
-        visualizador.setPassword(Base64.getEncoder().encodeToString(claveSimetricaCifrada));
-        visualizador.setRecurso(recurso);
-        visualizadorRepository.save(visualizador);
-        return true;
-    }
 
     private X509Certificate generarCertificadoRecurso(String nombreRecurso, KeyPair usuarioKeyPair) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
@@ -184,13 +204,8 @@ public class ServicioRecurso {
     }
 
 
-    private byte[] firmarConClavePrivada(byte[] data, PrivateKey privateKey) throws Exception {
-        String algoritmoFirma = "SHA256withRSA";
-        Signature firma = Signature.getInstance(algoritmoFirma);
 
-        firma.initSign(privateKey);
-        MessageDigest hash = MessageDigest.getInstance("SHA-256");
-        firma.update(hash.digest(data));
-        return firma.sign();
-    }
+
+
+
 }

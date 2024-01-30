@@ -3,6 +3,7 @@ package com.example.keystorepablo.pantallas.principal;
 import com.example.keystorepablo.common.Screens;
 import com.example.keystorepablo.domain.modelo.Credentials;
 import com.example.keystorepablo.pantallas.common.BaseScreenController;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
@@ -91,5 +92,9 @@ public class PrincipalController {
             log.error(e.getMessage(), e);
         }
         return panePantalla;
+    }
+
+    public void logOutClick() {
+        logout();
     }
 }

@@ -14,12 +14,14 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class ServicioCredentials {
@@ -44,32 +46,21 @@ public class ServicioCredentials {
             KeyPair userKeyPair = keyGen.generateKeyPair();
             PrivateKey userPrivateKey = userKeyPair.getPrivate();
             PublicKey userPublicKey = userKeyPair.getPublic();
-
-            // Step 2: Create an X.509 certificate for the user
             X509Certificate userCertificate = generateCertificate(credentials.getUsername(), userPublicKey, userKeyPair);
-
-            // Step 3: Store the user's public key and certificate in the KeyStore
             char[] keystorePassword = "1234".toCharArray();
             KeyStore ks = KeyStore.getInstance("PKCS12");
             ks.load(new FileInputStream("keystore.jks"), keystorePassword);
-
-            // Store the public key and certificate with a unique alias (e.g., username)
             ks.setCertificateEntry(credentials.getUsername(), userCertificate);
             ks.setKeyEntry(credentials.getUsername(), userPrivateKey, keystorePassword, new X509Certificate[]{userCertificate});
-
-
-            // Save the updated KeyStore to the file
             FileOutputStream fos = new FileOutputStream("keystore.jks");
             ks.store(fos, keystorePassword);
             fos.close();
-
-            // Save the credentials in the database
             credentials.setPassword(passwordEncoder.encode(credentials.getPassword()));
             credentialsRepository.save(credentials);
             result = true;
         } catch (Exception ex) {
             ex.printStackTrace();
-            // Handle exceptions appropriately
+
         }
         return result;
     }
@@ -83,8 +74,9 @@ public class ServicioCredentials {
         return result;
 
     }
+
     private X509Certificate generateCertificate(String username, PublicKey publicKey, KeyPair issuerKeyPair) throws Exception {
-        // Customize the certificate attributes as needed
+
         X500Name issuer = new X500Name("CN=Issuer");
         X500Name owner = new X500Name("CN=" + username);
 
@@ -99,5 +91,9 @@ public class ServicioCredentials {
         ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption").build(issuerKeyPair.getPrivate());
         X509CertificateHolder certHolder = certGen.build(signer);
         return new JcaX509CertificateConverter().getCertificate(certHolder);
+    }
+
+    public List<Credentials> getAll() {
+        return credentialsRepository.findAll();
     }
 }
