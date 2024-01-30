@@ -36,7 +36,7 @@ public class RecursoController extends BaseScreenController {
     }
 
     public void crearCertificados() throws Exception {
-        serviceVisualizador.crearVisualizador(servicioRecurso.crearRecurso(credentials.getUsername(), "recurso1", "1234"), credentials.getUsername());
+        servicioRecurso.crearVisualizador(servicioRecurso.crearRecurso(credentials.getUsername(), "recurso1", "1234"), credentials.getUsername());
 
     }
 
