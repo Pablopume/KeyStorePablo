@@ -15,7 +15,7 @@
         </columns>
     </TableView>
     <TextField fx:id="nombreRecurso" layoutX="408.0" layoutY="24.0" prefHeight="25.0" prefWidth="95.0" promptText="Nombre Recurso" />
-    <PasswordField fx:id="contraseñaRecurso" layoutX="408.0" layoutY="62.0" prefHeight="25.0" prefWidth="95.0" promptText="Contraseña" />
+    <PasswordField fx:id="contrasenyaRec" layoutX="408.0" layoutY="62.0" prefHeight="25.0" prefWidth="95.0" promptText="Contraseña" />
     <PasswordField fx:id="newPassword" layoutX="30.0" layoutY="238.0" prefHeight="25.0" prefWidth="95.0" promptText="Nueva Contraseña" />
     <ComboBox fx:id="comboBox" layoutX="26.0" layoutY="24.0" prefWidth="150.0" promptText="Filter" />
 

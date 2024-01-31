@@ -7,19 +7,19 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Entity
-@Table(name = "visualizadores")
+@Table(name = Constantes.VISUALIZADORES)
 @AllArgsConstructor
 @NoArgsConstructor
 public class Visualizador {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id",nullable= false)
+    @Column(name = Constantes.ID,nullable= false)
     private int id;
-    @Column(name = "nombre",nullable= false)
+    @Column(name = Constantes.NOMBRES,nullable= false)
     private String nombre;
-    @Column(name = "password",nullable= false,columnDefinition = "TEXT")
+    @Column(name = Constantes.PASSWORD,nullable= false,columnDefinition = Constantes.TEXT)
     private String password;
     @ManyToOne
-    @JoinColumn(name = "recurso_id", referencedColumnName = "id")
+    @JoinColumn(name = Constantes.RECURSO_ID, referencedColumnName = Constantes.ID)
     private Recurso recurso;
 }

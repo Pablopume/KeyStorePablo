@@ -1,5 +1,6 @@
 package com.example.keystorepablo.servicios;
 
+import com.example.keystorepablo.Configuration;
 import com.example.keystorepablo.data.RecursoRepsitory;
 import com.example.keystorepablo.data.VisualizadorRepository;
 import com.example.keystorepablo.domain.modelo.Recurso;
@@ -19,7 +20,6 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
@@ -34,44 +34,37 @@ import java.util.List;
 @Service
 public class ServicioRecurso {
     private final EncriptacionAsim encriptacionAsim;
-    private final PasswordEncoder passwordEncoder;
     private final RecursoRepsitory recursosRepository;
     private final VisualizadorRepository visualizadorRepository;
     private final Encriptacion encriptacion;
+    private final Configuration configuration;
 
     @Autowired
-    public ServicioRecurso(EncriptacionAsim encriptacionAsim, PasswordEncoder passwordEncoder, RecursoRepsitory recursosRepository, VisualizadorRepository visualizadorRepository, Encriptacion encriptacion) {
+    public ServicioRecurso(EncriptacionAsim encriptacionAsim, RecursoRepsitory recursosRepository, VisualizadorRepository visualizadorRepository, Encriptacion encriptacion, Configuration configuration) {
         this.encriptacionAsim = encriptacionAsim;
-        this.passwordEncoder = passwordEncoder;
+
         this.recursosRepository = recursosRepository;
         this.visualizadorRepository = visualizadorRepository;
         this.encriptacion = encriptacion;
+        this.configuration = configuration;
     }
 
 
-    public Recurso crearRecurso(String nombreUsuario, String nombreRecurso, String contraseñaRecurso) {
-        Recurso recursos = new Recurso();
+    public Either<ErrorApp, Recurso> crearRecurso(String nombreUsuario, String nombreRecurso, String contrasenyaRecurso) {
+
+        Either<ErrorApp, Recurso> result;
         try {
-            // Obtener la información del usuario
             KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreUsuario);
-
-
-            // Generar el certificado del recurso
             generarCertificadoRecurso(nombreRecurso, usuarioKeyPair);
-
-            // Firmar la contraseña del recurso con la clave privada del usuario
-            String firmaContraseñaRecurso = firmarConClavePrivada(contraseñaRecurso.getBytes(), usuarioKeyPair.getPrivate());
-
-            // Guardar el recurso en la base de datos
+            String firmaContrasenyaRecurso = firmarConClavePrivada(contrasenyaRecurso.getBytes(), usuarioKeyPair.getPrivate());
             Recurso nuevoRecurso = new Recurso();
             nuevoRecurso.setId(0);
             nuevoRecurso.setNombre(nombreRecurso);
             String random = Utils.randomBytes();
-            nuevoRecurso.setPassword(encriptacion.encriptar(contraseñaRecurso, random));
-            nuevoRecurso.setFirma(firmaContraseñaRecurso);
+            nuevoRecurso.setPassword(encriptacion.encriptar(contrasenyaRecurso, random));
+            nuevoRecurso.setFirma(firmaContrasenyaRecurso);
             nuevoRecurso.setUserfirma(nombreUsuario);
             recursosRepository.save(nuevoRecurso);
-
             Visualizador visualizador = new Visualizador();
             String passwordvisualizador = encriptacionAsim.encriptar(random, usuarioKeyPair.getPublic()).get();
             visualizador.setNombre(nombreUsuario);
@@ -80,72 +73,78 @@ public class ServicioRecurso {
             visualizadorRepository.save(visualizador);
 
 
-            return nuevoRecurso;
+            result = Either.right(nuevoRecurso);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-            // Manejar otras excepciones según sea necesario
-
+            result = Either.left(new ErrorApp(ConstantesServicios.ERROR_AL_CREAR_EL_RECURSO));
         }
-        return recursos;
+        return result;
 
     }
 
     private String firmarConClavePrivada(byte[] data, PrivateKey privateKey) throws Exception {
-        String algoritmoFirma = "SHA256withRSA";
+        String algoritmoFirma = ConstantesServicios.SHA_256_WITH_RSA;
         Signature firma = Signature.getInstance(algoritmoFirma);
         firma.initSign(privateKey);
-        MessageDigest hash = MessageDigest.getInstance("SHA-256");
+        MessageDigest hash = MessageDigest.getInstance(ConstantesServicios.SHA_256);
         firma.update(hash.digest(data));
+
         return Base64.getEncoder().encodeToString(firma.sign());
     }
 
-    public boolean verificarFirmaRecurso(Recurso recurso, String nombreUsuario) {
+    public Either<ErrorApp, Boolean> verificarFirmaRecurso(Recurso recurso, String nombreUsuario) {
+        Either<ErrorApp, Boolean> result = null;
         try {
             KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreUsuario);
-            String firmaAlmacenada = recurso.getFirma();
-            String contraseñaRecurso = recurso.getPassword();
-            Visualizador visualizador = visualizadorRepository.findVisualizadorByRecursoAndNombre(recurso, nombreUsuario);
-            String random = encriptacionAsim.desencriptar(visualizador.getPassword(), usuarioKeyPair.getPrivate()).get();
-            String decryptedPassword = encriptacion.desencriptar(contraseñaRecurso, random);
-            String firmaGenerada = firmarConClavePrivada(decryptedPassword.getBytes(), usuarioKeyPair.getPrivate());
-            return firmaAlmacenada.equals(firmaGenerada);
+            if (usuarioKeyPair != null) {
+
+
+                String firmaAlmacenada = recurso.getFirma();
+                String contrasenyaRecurso = recurso.getPassword();
+                Visualizador visualizador = visualizadorRepository.findVisualizadorByRecursoAndNombre(recurso, nombreUsuario);
+                String random = encriptacionAsim.desencriptar(visualizador.getPassword(), usuarioKeyPair.getPrivate()).get();
+                String decryptedPassword = encriptacion.desencriptar(contrasenyaRecurso, random);
+                String firmaGenerada = firmarConClavePrivada(decryptedPassword.getBytes(), usuarioKeyPair.getPrivate());
+                result = Either.right(firmaAlmacenada.equals(firmaGenerada));
+            }
         } catch (Exception ex) {
-            log.error("Error al verificar la firma del recurso", ex);
-            // Manejar otras excepciones según sea necesario
+            result = Either.left(new ErrorApp(ConstantesServicios.ERROR_AL_VERIFICAR_LA_FIRMA));
         }
-        return false;
+        return result;
     }
 
-    public boolean changePassword(String username, String password, Recurso recurso) throws Exception {
+    public Either<ErrorApp, Boolean> changePassword(String username, String password, Recurso recurso) throws Exception {
+        Either<ErrorApp, Boolean> result = null;
         KeyPair usuarioKeyPair = obtenerKeyPairUsuario(username);
         Visualizador as = visualizadorRepository.findByNombreAndRecurso(username, recurso);
+        if (usuarioKeyPair != null) {
+            Either<ErrorApp, String> random = encriptacionAsim.desencriptar(as.getPassword(), usuarioKeyPair.getPrivate());
+            String firma = firmarConClavePrivada(password.getBytes(), usuarioKeyPair.getPrivate());
 
-        Either<ErrorApp, String> random = encriptacionAsim.desencriptar(as.getPassword(), usuarioKeyPair.getPrivate());
-        String firma = firmarConClavePrivada(password.getBytes(), usuarioKeyPair.getPrivate());
-
-        if (random.isRight()) {
-            String passwordEncriptada = encriptacion.encriptar(password, random.get());
-            recurso.setPassword(passwordEncriptada);
-            recurso.setFirma(firma);
-            recurso.setUserfirma(username);
-            recursosRepository.save(recurso);
-            return true;
-        } else {
-            return false;
+            if (random.isRight()) {
+                String passwordEncriptada = encriptacion.encriptar(password, random.get());
+                recurso.setPassword(passwordEncriptada);
+                recurso.setFirma(firma);
+                recurso.setUserfirma(username);
+                recursosRepository.save(recurso);
+                result = Either.right(true);
+            } else {
+                result = Either.left(new ErrorApp(ConstantesServicios.ERROR_AL_CAMBIAR_LA_CONTRASENYA));
+            }
         }
+        return result;
     }
 
     public List<Recurso> getAllRecursos(String nombreUsuario) {
         return visualizadorRepository.findByNombre(nombreUsuario).stream().map(Visualizador::getRecurso).toList();
     }
 
-    public Either<ErrorApp, Visualizador> compartirRecurso(String nombreDueño, String nombreVisualizador, Recurso recurso) {
-        Either<ErrorApp, Visualizador> result = Either.left(new ErrorApp("Error al compartir el recurso"));
-        KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreDueño);
+    public Either<ErrorApp, Visualizador> compartirRecurso(String nombreOwner, String nombreVisualizador, Recurso recurso) {
+        Either<ErrorApp, Visualizador> result = Either.left(new ErrorApp(ConstantesServicios.ERROR_AL_COMPARTIR_EL_RECURSO));
+        KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreOwner);
         KeyPair visualizadorKeyPair = obtenerKeyPairUsuario(nombreVisualizador);
 
-        Visualizador visualizador = visualizadorRepository.findByNombreAndRecurso(nombreDueño, recurso);
+        Visualizador visualizador = visualizadorRepository.findByNombreAndRecurso(nombreOwner, recurso);
         if (usuarioKeyPair != null && visualizadorKeyPair != null) {
             String randomizador = encriptacionAsim.desencriptar(visualizador.getPassword(), usuarioKeyPair.getPrivate()).get();
             String passwordEncripted = encriptacionAsim.encriptar(randomizador, visualizadorKeyPair.getPublic()).get();
@@ -162,26 +161,21 @@ public class ServicioRecurso {
 
     private KeyPair obtenerKeyPairUsuario(String nombreUsuario) {
         try {
-            // Cargar el keystore desde el archivo
-            char[] keystorePassword = "1234".toCharArray();
-            KeyStore ks = KeyStore.getInstance("PKCS12");
-            FileInputStream fis = new FileInputStream("keystore.jks");
+
+            char[] keystorePassword = configuration.getProperty(ConstantesServicios.CONTRASENYA).toCharArray();
+            KeyStore ks = KeyStore.getInstance(ConstantesServicios.PKCS_12);
+            FileInputStream fis = new FileInputStream(configuration.getProperty(ConstantesServicios.KEYSTORE));
             ks.load(fis, keystorePassword);
             fis.close();
 
-            // Obtener la clave privada del usuario utilizando su nombre como alias
-            char[] userPassword = "1234".toCharArray(); // Contraseña del usuario
+            char[] userPassword = configuration.getProperty(ConstantesServicios.CONTRASENYA).toCharArray(); // Contraseña del usuario
             Key userPrivateKey = ks.getKey(nombreUsuario, userPassword);
-
-            // Obtener el certificado del usuario desde el keystore
             X509Certificate userCertificate = (X509Certificate) ks.getCertificate(nombreUsuario);
-
-            // Crear y devolver la KeyPair del usuario
             PublicKey userPublicKey = userCertificate.getPublicKey();
             return new KeyPair(userPublicKey, (PrivateKey) userPrivateKey);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error(ex.getMessage());
             // Manejar excepciones según sea necesario
             return null;
         }
@@ -195,12 +189,11 @@ public class ServicioRecurso {
         X500Name issuer = new X500Name("CN=" + nombreRecurso);
         X500Name owner = new X500Name("CN=" + nombreRecurso);
 
-        // Crear el generador del certificado
         X509v3CertificateBuilder certGen = new X509v3CertificateBuilder(
                 issuer,
                 BigInteger.valueOf(1),
                 new Date(),
-                new Date(System.currentTimeMillis() + 365 * 24 * 60 * 60 * 1000), // Valid for 1 year
+                new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000),
                 owner,
                 SubjectPublicKeyInfo.getInstance(ASN1Sequence.getInstance(usuarioKeyPair.getPublic().getEncoded()))
         );

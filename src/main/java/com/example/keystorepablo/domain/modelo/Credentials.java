@@ -7,17 +7,17 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Entity
-@Table(name = "credentials")
+@Table(name = Constantes.CREDENTIALS)
 @AllArgsConstructor
 @NoArgsConstructor
 public class Credentials {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id",nullable= false)
+    @Column(name = Constantes.ID,nullable= false)
     private int id;
-    @Column(name = "username",nullable= false)
+    @Column(name = Constantes.USERNAME,nullable= false)
     private String username;
-    @Column(name = "password",nullable= false)
+    @Column(name = Constantes.PASSWORD,nullable= false)
     private String password;
 
 

@@ -9,23 +9,22 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "recursos")
+@Table(name = Constantes.RECURSOS)
 @AllArgsConstructor
 @NoArgsConstructor
 public class Recurso {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id",nullable= false)
+    @Column(name = Constantes.ID,nullable= false)
     private int id;
-    @Column(name = "nombre",nullable= false)
+    @Column(name = Constantes.NOMBRES,nullable= false)
     private String nombre;
-
-    @Column(name="password",nullable = false)
+    @Column(name=Constantes.PASSWORD,nullable = false)
     private String password;
-    @Column(name="firma",nullable = false ,columnDefinition = "TEXT")
+    @Column(name= Constantes.FIRMAR,nullable = false ,columnDefinition = Constantes.TEXT)
     private String firma;
-    @Column(name="user_firma",nullable = false,columnDefinition = "LONGTEXT")
+    @Column(name= Constantes.FIRMA1,nullable = false)
     private String userfirma;
-    @OneToMany(mappedBy = "recurso")
+    @OneToMany(mappedBy = Constantes.RECURSOI)
     private List<Visualizador> visualizadores;
 }

@@ -1,9 +1,9 @@
 package com.example.keystorepablo.pantallas.principal;
 
 import com.example.keystorepablo.common.Screens;
+import com.example.keystorepablo.domain.modelo.Constantes;
 import com.example.keystorepablo.domain.modelo.Credentials;
 import com.example.keystorepablo.pantallas.common.BaseScreenController;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
@@ -64,8 +64,8 @@ public class PrincipalController {
     public void showErrorAlert(String mensaje) {
         alert.setAlertType(Alert.AlertType.ERROR);
         alert.setContentText(mensaje);
-        alert.getDialogPane().setId("alert");
-        alert.getDialogPane().lookupButton(ButtonType.OK).setId("btn-ok");
+        alert.getDialogPane().setId(Constantes.ALERT);
+        alert.getDialogPane().lookupButton(ButtonType.OK).setId(Constantes.BTN_OK);
         alert.showAndWait();
     }
 
@@ -73,7 +73,7 @@ public class PrincipalController {
         alert.setAlertType(Alert.AlertType.INFORMATION);
         alert.setContentText(mensaje);
         alert.setHeaderText(mensaje);
-        alert.getDialogPane().lookupButton(ButtonType.OK).setId("btn-ok");
+        alert.getDialogPane().lookupButton(ButtonType.OK).setId(Constantes.BTN_OK);
         alert.showAndWait();
     }
 

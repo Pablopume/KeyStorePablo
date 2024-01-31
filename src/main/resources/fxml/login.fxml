@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.Button?>
 
-<AnchorPane fx:id="pantallaLogin" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.14-internal"
-            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.keystorepablo.pantallas.LoginController">
-    <TextField fx:id="txtUserName" layoutX="225.0" layoutY="151.0" prefHeight="50.0" prefWidth="119.0"
-               promptText="user"/>
-    <PasswordField fx:id="txtPassword" layoutX="225.0" layoutY="210.0" prefHeight="19.0" prefWidth="119.0"
-                   promptText="password"/>
-    <Button fx:id="btLogin" layoutX="228.0" layoutY="291.0" mnemonicParsing="false" prefHeight="26.0"
-            prefWidth="119.0" text="Login"
-    onAction="#doLogin"/>
-
+<AnchorPane fx:id="pantallaLogin" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.keystorepablo.pantallas.LoginController">
+    <TextField fx:id="txtUserName" layoutX="225.0" layoutY="151.0" prefHeight="50.0" prefWidth="119.0" promptText="user" />
+    <PasswordField fx:id="txtPassword" layoutX="225.0" layoutY="210.0" prefHeight="19.0" prefWidth="119.0" promptText="password" />
+    <Button fx:id="btLogin" layoutX="225.0" layoutY="250.0" mnemonicParsing="false" onAction="#doLogin" prefHeight="26.0" prefWidth="119.0" text="Login" />
+    <Label layoutX="163.0" layoutY="61.0" prefHeight="43.0" prefWidth="367.0" text="User: pablo Password: pablo  User: antonio Password: antonio" />
     <!-- Nuevo botón de registro -->
-    <Button fx:id="btRegister" layoutX="375.0" layoutY="291.0" mnemonicParsing="false" prefHeight="26.0"
-            prefWidth="119.0" text="Register" onAction="#doRegister"/>
+    <Button fx:id="btRegister" layoutX="225.0" layoutY="289.0" mnemonicParsing="false" onAction="#doRegister" prefHeight="26.0" prefWidth="119.0" text="Register" />
+
 </AnchorPane>
