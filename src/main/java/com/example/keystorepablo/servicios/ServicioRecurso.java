@@ -21,6 +21,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.security.*;
@@ -28,6 +29,7 @@ import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+
 @Log4j2
 @Service
 public class ServicioRecurso {
@@ -88,6 +90,7 @@ public class ServicioRecurso {
         return recursos;
 
     }
+
     private String firmarConClavePrivada(byte[] data, PrivateKey privateKey) throws Exception {
         String algoritmoFirma = "SHA256withRSA";
         Signature firma = Signature.getInstance(algoritmoFirma);
@@ -96,27 +99,16 @@ public class ServicioRecurso {
         firma.update(hash.digest(data));
         return Base64.getEncoder().encodeToString(firma.sign());
     }
+
     public boolean verificarFirmaRecurso(Recurso recurso, String nombreUsuario) {
         try {
-            // Obtener la información del usuario
             KeyPair usuarioKeyPair = obtenerKeyPairUsuario(nombreUsuario);
-
-            // Obtener la firma almacenada en el recurso
             String firmaAlmacenada = recurso.getFirma();
-
-            // Obtener la contraseña del recurso
             String contraseñaRecurso = recurso.getPassword();
-           Visualizador visualizador= visualizadorRepository.findVisualizadorByRecursoAndNombre(recurso,nombreUsuario);
-         String random=   encriptacionAsim.desencriptar(visualizador.getPassword(),usuarioKeyPair.getPrivate()).get();
-
-
-            // Desencriptar la contraseña utilizando el usuarioKeyPair
+            Visualizador visualizador = visualizadorRepository.findVisualizadorByRecursoAndNombre(recurso, nombreUsuario);
+            String random = encriptacionAsim.desencriptar(visualizador.getPassword(), usuarioKeyPair.getPrivate()).get();
             String decryptedPassword = encriptacion.desencriptar(contraseñaRecurso, random);
-
-            // Firmar la contraseña del recurso con la clave privada del usuario
             String firmaGenerada = firmarConClavePrivada(decryptedPassword.getBytes(), usuarioKeyPair.getPrivate());
-
-            // Comparar la firma almacenada con la firma generada
             return firmaAlmacenada.equals(firmaGenerada);
         } catch (Exception ex) {
             log.error("Error al verificar la firma del recurso", ex);
@@ -125,8 +117,26 @@ public class ServicioRecurso {
         return false;
     }
 
+    public boolean changePassword(String username, String password, Recurso recurso) throws Exception {
+        KeyPair usuarioKeyPair = obtenerKeyPairUsuario(username);
+        Visualizador as = visualizadorRepository.findByNombreAndRecurso(username, recurso);
 
-    public List<Recurso> getAllRecursos(String nombreUsuario){
+        Either<ErrorApp, String> random = encriptacionAsim.desencriptar(as.getPassword(), usuarioKeyPair.getPrivate());
+        String firma = firmarConClavePrivada(password.getBytes(), usuarioKeyPair.getPrivate());
+
+        if (random.isRight()) {
+            String passwordEncriptada = encriptacion.encriptar(password, random.get());
+            recurso.setPassword(passwordEncriptada);
+            recurso.setFirma(firma);
+            recurso.setUserfirma(username);
+            recursosRepository.save(recurso);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public List<Recurso> getAllRecursos(String nombreUsuario) {
         return visualizadorRepository.findByNombre(nombreUsuario).stream().map(Visualizador::getRecurso).toList();
     }
 
@@ -148,7 +158,6 @@ public class ServicioRecurso {
         }
         return result;
     }
-
 
 
     private KeyPair obtenerKeyPairUsuario(String nombreUsuario) {
@@ -202,10 +211,6 @@ public class ServicioRecurso {
 
 
     }
-
-
-
-
 
 
 }
